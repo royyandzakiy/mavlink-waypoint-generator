@@ -39,7 +39,7 @@ pip install pymavlink numpy
 
 
 # Run the mission planner:
-python shaped_waypoint_generator/run_mission.py
+python run_mission.py
 ```
 
 ### 2. Edit Confugration
@@ -79,3 +79,4 @@ Mission uploaded successfully!
 ```
 
 ### Misc
+(adding images later)
