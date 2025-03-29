@@ -78,6 +78,11 @@ Mission uploaded successfully!
 ```
 
 ### Example
+##### circle zigzag
 ![circle_zigzag](docs/circle_zigzag.png)
+
+##### circle_spiralin
+![circle_spiralin](docs/circle_spiralin.png)
+
+##### square spiralout
 ![square_spiralout](docs/square_spiralout.png)
-![square_spiralin](docs/circle_spiralin.png)
