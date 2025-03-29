@@ -2,7 +2,7 @@
 class MissionParams:
     def __init__(self):
         # Shape parameters
-        self.shape_type = "square"  # "circle", "triangle", or "square"
+        self.shape_type = "circle"  # "circle", "triangle", or "square"
         self.radius_m = 500  # Distance from center to edge in meters
         
         # Pattern parameters
