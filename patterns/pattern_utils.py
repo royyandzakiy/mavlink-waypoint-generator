@@ -16,7 +16,11 @@ def calculate_distance_meters(p1, p2, latitude):
     dlon = (lon2 - lon1) * (111320 * math.cos(math.radians(latitude)))
     return math.sqrt(dlat**2 + dlon**2)
 
-def add_spray_points(waypoints, interval_m, start_lat):
+def add_spray_points(waypoints, interval_m, start_lat, enable_spray=True):
+    """Add spray points between waypoints if enabled"""
+    if not enable_spray or interval_m <= 0:
+        return waypoints, []  # Return original waypoints and empty spray list
+    
     if len(waypoints) < 2:
         return waypoints, []
     
@@ -28,7 +32,11 @@ def add_spray_points(waypoints, interval_m, start_lat):
         wp2 = waypoints[i+1]
         new_waypoints.append(wp1)
         
-        distance = calculate_distance_meters((wp1[0], wp1[1]), (wp2[0], wp2[1]), start_lat)
+        distance = calculate_distance_meters(
+            (wp1[0], wp1[1]), 
+            (wp2[0], wp2[1]), 
+            start_lat
+        )
         num_sprays = int(distance / interval_m)
         
         if num_sprays > 0:

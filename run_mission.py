@@ -5,10 +5,7 @@ from mavlink import MissionHandler
 from patterns import *
 
 def main():
-    # Load mission parameters
     params = MissionParams()
-    
-    # Initialize MAVLink connection
     handler = MissionHandler(params.connection_string)
     
     # Get current position
@@ -16,7 +13,7 @@ def main():
     start_lat = msg.lat / 1e7
     start_lon = msg.lon / 1e7
     
-    # Select the appropriate pattern generator
+    # Generate waypoints
     generators = {
         'circle': {
             'zigzag': circle_zigzag,
@@ -47,11 +44,12 @@ def main():
         lon = start_lon + meters_to_degrees(x_rot, start_lat)
         waypoints_global.append((lat, lon, params.altitude))
     
-    # Add spray points
+    # Conditionally add spray points
     waypoints_with_sprays, spray_points = add_spray_points(
-        waypoints_global, 
-        params.spray_interval_m, 
-        start_lat
+        waypoints_global,
+        params.spray_interval_m,
+        start_lat,
+        params.enable_spray
     )
     
     # Prepare mission items
@@ -76,28 +74,30 @@ def main():
         })
         current_seq += 1
         
-        for spray_seq, spray_pos in spray_points:
-            if spray_seq == i:
-                mission_items.append({
-                    'seq': current_seq,
-                    'frame': mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
-                    'command': mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
-                    'current': 0,
-                    'autocontinue': 1,
-                    'param1': params.servo_channel,
-                    'param2': params.servo_pwm,
-                    'param3': 0,
-                    'param4': 0,
-                    'x': spray_pos[0],
-                    'y': spray_pos[1],
-                    'z': spray_pos[2],
-                    'is_spray': True
-                })
-                current_seq += 1
+        # Only add spray commands if enabled
+        if params.enable_spray:
+            for spray_seq, spray_pos in spray_points:
+                if spray_seq == i:
+                    mission_items.append({
+                        'seq': current_seq,
+                        'frame': mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+                        'command': mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
+                        'current': 0,
+                        'autocontinue': 1,
+                        'param1': params.servo_channel,
+                        'param2': params.servo_pwm,
+                        'param3': 0,
+                        'param4': 0,
+                        'x': spray_pos[0],
+                        'y': spray_pos[1],
+                        'z': spray_pos[2],
+                        'is_spray': True
+                    })
+                    current_seq += 1
     
     # Upload mission
     handler.upload_mission(mission_items)
-    print(f"Mission completed: {params.shape_type} with {params.pattern_type} pattern")
+    print(f"Mission completed: {params.shape_type} pattern with {'spray' if params.enable_spray else 'no spray'}")
 
 if __name__ == "__main__":
     main()

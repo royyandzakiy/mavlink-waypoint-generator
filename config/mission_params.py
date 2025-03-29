@@ -2,7 +2,7 @@
 class MissionParams:
     def __init__(self):
         # Shape parameters
-        self.shape_type = "circle"  # "circle", "triangle", or "square"
+        self.shape_type = "square"  # "circle", "triangle", or "square"
         self.radius_m = 500  # Distance from center to edge in meters
         
         # Pattern parameters
@@ -11,7 +11,7 @@ class MissionParams:
         self.rotation_deg = 45  # Rotation angle in degrees
         
         # Spray parameters
-        self.enable_spray = True  # Set to False to disable spray points
+        self.enable_spray = False  # Set to False to disable spray points
         self.spray_interval_m = 50  # Distance between spray triggers in meters
         self.servo_channel = 6  # PWM output channel
         self.servo_pwm = 1900  # PWM value for spray ON (1100-1900)
