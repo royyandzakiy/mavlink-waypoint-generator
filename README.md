@@ -38,7 +38,7 @@ python -m pip install --upgrade pip
 pip install pymavlink numpy
 
 # Clone repository (if using Git)
-git clone https://github.com/your-repo/agri-drone-mission.git
+git clone https://github.com/royyandzakiy/ardupilot_mavlink_fastapi
 cd agri-drone-mission
 
 # Run the mission planner:
