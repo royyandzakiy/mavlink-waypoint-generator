@@ -21,9 +21,9 @@ A Python-based system for generating and uploading complex agricultural spraying
 ### 1. Setup Virtual Environment
 
 ```powershell
-# Create project directory
-mkdir agri-drone-mission
-cd agri-drone-mission
+# Clone repository
+git clone https://github.com/royyandzakiy/ardupilot_mavlink_fastapi.git
+cd ardupilot_mavlink_fastapi
 
 # Create virtual environment
 python -m venv venv
@@ -37,12 +37,9 @@ python -m pip install --upgrade pip
 # Install required packages
 pip install pymavlink numpy
 
-# Clone repository (if using Git)
-git clone https://github.com/royyandzakiy/ardupilot_mavlink_fastapi
-cd agri-drone-mission
 
 # Run the mission planner:
-python run_mission.py
+python shaped_waypoint_generator/run_mission.py
 ```
 
 ### 2. Edit Confugration
