@@ -21,11 +21,12 @@ start_lon = msg.lon / 1e7
 alt = 30  # Desired altitude in meters
 
 # Configuration parameters
-shape_type = "circle"  # "circle", "triangle", or "square"
-radius_m = 250  # Distance from center to furthest point in meters
-stripe_separation_m = 50  # Distance between zigzag lines in meters
+shape_type = "square"  # "circle", "triangle", or "square"
+radius_m = 500  # Distance from center to edge in meters
+pattern_type = "spiral_out"  # "zigzag", "spiral_out", or "spiral_in"
+stripe_separation_m = 100  # Distance between passes in meters
 rotation_deg = 0  # Rotation angle in degrees
-spray_interval_m = 20  # Distance between spray triggers in meters
+spray_interval_m = 50  # Distance between spray triggers in meters
 
 servo_channel = 6  # PWM output channel to use (typically 6-9 for ArduPilot)
 servo_pwm = 1900  # PWM value for spray ON (1100-1900)
@@ -33,10 +34,6 @@ servo_pwm = 1900  # PWM value for spray ON (1100-1900)
 # Convert meters to degrees (approximate)
 def meters_to_degrees(meters, latitude):
     return meters / (111320 * math.cos(math.radians(latitude)))
-
-# Convert degrees to meters (approximate)
-def degrees_to_meters(degrees, latitude):
-    return degrees * (111320 * math.cos(math.radians(latitude)))
 
 # Rotate a point (x,y) around origin (0,0) by angle_rad radians
 def rotate_point(x, y, angle_rad):
@@ -48,70 +45,104 @@ def rotate_point(x, y, angle_rad):
 def calculate_distance_meters(p1, p2, latitude):
     lat1, lon1 = p1
     lat2, lon2 = p2
-    dlat = degrees_to_meters(lat2 - lat1, latitude)
-    dlon = degrees_to_meters(lon2 - lon1, latitude)
+    dlat = (lat2 - lat1) * 111320
+    dlon = (lon2 - lon1) * (111320 * math.cos(math.radians(latitude)))
     return math.sqrt(dlat**2 + dlon**2)
 
-# Generate shape boundaries
-def generate_shape_waypoints(shape_type, radius_m, stripe_separation_m, start_lat):
-    if shape_type == "square":
-        half_size = radius_m
-        waypoints_local = [(0, 0)]
-        stripe_count = int((half_size * 2) / stripe_separation_m)
+# Generate spiral waypoints for a shape
+def generate_spiral_waypoints(shape_type, radius_m, stripe_separation_m, direction="out"):
+    waypoints = []
+    max_radius = radius_m
+    current_radius = stripe_separation_m if direction == "out" else max_radius
+    waypoints.append((0, 0))  # Start at center
+    
+    while (direction == "out" and current_radius <= max_radius) or \
+          (direction == "in" and current_radius > 0):
         
+        if shape_type == "circle":
+            circumference = 2 * math.pi * current_radius
+            num_points = max(8, int(circumference / stripe_separation_m))
+            for i in range(num_points):
+                angle = 2 * math.pi * i / num_points
+                x = current_radius * math.cos(angle)
+                y = current_radius * math.sin(angle)
+                waypoints.append((x, y))
+        
+        elif shape_type == "square":
+            half_size = current_radius
+            waypoints.append((-half_size, -half_size))
+            waypoints.append((-half_size, half_size))
+            waypoints.append((half_size, half_size))
+            waypoints.append((half_size, -half_size))
+            waypoints.append((-half_size, -half_size))
+        
+        elif shape_type == "triangle":
+            height = current_radius * 2
+            half_width = height * math.tan(math.radians(30))
+            waypoints.append((0, -current_radius))
+            waypoints.append((-half_width, current_radius))
+            waypoints.append((half_width, current_radius))
+            waypoints.append((0, -current_radius))
+        
+        if direction == "out":
+            current_radius += stripe_separation_m
+        else:
+            current_radius -= stripe_separation_m
+    
+    waypoints.append((0, 0))  # Return to center
+    return waypoints
+
+# Generate zigzag waypoints for a shape
+def generate_zigzag_waypoints(shape_type, radius_m, stripe_separation_m):
+    waypoints = [(0, 0)]  # Start at center
+    
+    if shape_type == "circle":
+        num_stripes = int((radius_m * 2) / stripe_separation_m)
+        for i in range(num_stripes + 1):
+            y = -radius_m + (i * stripe_separation_m)
+            half_width = math.sqrt(max(0, radius_m**2 - y**2))
+            if i % 2 == 0:
+                waypoints.append((-half_width, y))
+                waypoints.append((half_width, y))
+            else:
+                waypoints.append((half_width, y))
+                waypoints.append((-half_width, y))
+    
+    elif shape_type == "square":
+        half_size = radius_m
+        stripe_count = int((half_size * 2) / stripe_separation_m)
         for i in range(stripe_count + 1):
             x = -half_size + (i * stripe_separation_m)
             if i % 2 == 0:
-                waypoints_local.append((x, half_size))
+                waypoints.append((x, half_size))
+                waypoints.append((x, -half_size))
             else:
-                waypoints_local.append((x, -half_size))
-            
-            if i < stripe_count:
-                next_x = -half_size + ((i + 1) * stripe_separation_m)
-                if i % 2 == 0:
-                    waypoints_local.append((next_x, half_size))
-                else:
-                    waypoints_local.append((next_x, -half_size))
-        
-        waypoints_local.append((0, 0))
-        return waypoints_local
-    
-    elif shape_type == "circle":
-        waypoints_local = [(0, 0)]
-        circumference = 2 * math.pi * radius_m
-        num_points = max(8, int(circumference / stripe_separation_m))
-        
-        for i in range(num_points + 1):
-            angle = 2 * math.pi * i / num_points
-            x = radius_m * math.cos(angle)
-            y = radius_m * math.sin(angle)
-            waypoints_local.append((x, y))
-        
-        waypoints_local.append((0, 0))
-        return waypoints_local
+                waypoints.append((x, -half_size))
+                waypoints.append((x, half_size))
     
     elif shape_type == "triangle":
-        waypoints_local = [(0, 0)]
         height = radius_m * 2
-        side_length = height / math.sin(math.radians(60))
         stripe_count = int(height / stripe_separation_m)
-        
         for i in range(stripe_count + 1):
             y = -radius_m + (i * stripe_separation_m)
             half_width = (height/2 - abs(y)) * math.tan(math.radians(30))
-            
             if i % 2 == 0:
-                waypoints_local.append((-half_width, y))
-                waypoints_local.append((half_width, y))
+                waypoints.append((-half_width, y))
+                waypoints.append((half_width, y))
             else:
-                waypoints_local.append((half_width, y))
-                waypoints_local.append((-half_width, y))
-        
-        waypoints_local.append((0, 0))
-        return waypoints_local
+                waypoints.append((half_width, y))
+                waypoints.append((-half_width, y))
     
+    waypoints.append((0, 0))  # Return to center
+    return waypoints
+
+# Generate waypoints based on pattern type
+def generate_shape_waypoints(shape_type, radius_m, stripe_separation_m, pattern_type):
+    if pattern_type.startswith("spiral"):
+        direction = "out" if pattern_type == "spiral_out" else "in"
+        return generate_spiral_waypoints(shape_type, radius_m, stripe_separation_m, direction)
     else:
-        raise ValueError(f"Unknown shape type: {shape_type}")
+        return generate_zigzag_waypoints(shape_type, radius_m, stripe_separation_m)
 
 # Interpolate points between waypoints for spray triggers
 def add_spray_points(waypoints, interval_m, start_lat):
@@ -140,8 +171,8 @@ def add_spray_points(waypoints, interval_m, start_lat):
     new_waypoints.append(waypoints[-1])
     return new_waypoints, spray_commands
 
-# Generate the base waypoints for the selected shape
-waypoints_local = generate_shape_waypoints(shape_type, radius_m, stripe_separation_m, start_lat)
+# Generate the base waypoints for the selected shape and pattern
+waypoints_local = generate_shape_waypoints(shape_type, radius_m, stripe_separation_m, pattern_type)
 
 # Convert rotation angle to radians
 rotation_rad = math.radians(rotation_deg)
@@ -240,5 +271,6 @@ print("Set first waypoint as current.")
 
 # End mission
 master.mav.mission_ack_send(target_system, target_component, mavutil.mavlink.MAV_MISSION_ACCEPTED)
-print(f"{shape_type.capitalize()} mission uploaded with {radius_m}m radius and {rotation_deg}° rotation")
-print(f"Spray control configured on servo channel {servo_channel} with PWM {servo_pwm}")
+print(f"{shape_type.capitalize()} {pattern_type} mission uploaded with {radius_m}m radius")
+print(f"Spray interval: {spray_interval_m}m, Rotation: {rotation_deg}°")
+print(f"Spray control on channel {servo_channel} (PWM: {servo_pwm})")
