@@ -37,7 +37,6 @@ python -m pip install --upgrade pip
 # Install required packages
 pip install pymavlink numpy
 
-
 # Run the mission planner:
 python run_mission.py
 ```
@@ -78,5 +77,7 @@ Sending spray waypoint 1...
 Mission uploaded successfully!
 ```
 
-### Misc
-(adding images later)
+### Example
+![circle_zigzag](docs/circle_zigzag.png)
+![square_spiralout](docs/square_spiralout.png)
+![square_spiralin](docs/circle_spiralin.png)
