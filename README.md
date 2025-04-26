@@ -16,21 +16,22 @@ A Python-based system for generating and uploading complex agricultural spraying
 
 - Windows 10/11
 - Python 3.8 or newer
-- Git (optional)
-- Ardupilot or any other Ground Control System Software -- acting as simulated droneto help see the waypoints being created
+- Git
+- Mission Planner (needed to download the SITL)
 
-### 0. Setup Software in The Loop (SITL)
+### 1. Setup Software in The Loop (SITL)
 - Open Mission Planner > Simulation Tab
 - Choose Quadplan & Plane. Click ok to download SITL
 - Find folder of SITL, mine is at `%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl\ArduPlane.exe`
 - Disconnect
 
+- Activate Command Prompt
 ```bash
 # Assign temporary variable
-set MY_ARDUPILOT_SITL=%USERPROFILE%\Documents\Mission Planner\sitl\
+set MY_ARDUPILOT_SITL=%USERPROFILE%\Documents\Mission Planner\sitl
 
 # or, choose this if you have OneDrive installed, your Documents folder probably have moved here
-set MY_ARDUPILOT_SITL=%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl\ 
+set MY_ARDUPILOT_SITL=%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl
 
 # Activate SITL
 "%MY_ARDUPILOT_SITL%\ArduPlane.exe" -Mquadplane -O-35.3633522,149.1652409,587.067920000005,0 -s1 --serial0 tcp:127.0.0.1 --defaults "%MY_ARDUPILOT_SITL%\default_params\quadplane.parm"
@@ -38,13 +39,15 @@ set MY_ARDUPILOT_SITL=%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl\
 # Activate mavproxy to broadcast to different IPs
 mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0.1:14552 --out udp:localhost:14601 --out udpin:localhost:14602 --out udpout:localhost:14603 --out udpbcast:192.168.2.255:14700
 ```
-- Connect Ardupilot to the broadcasted MavProxy
+
+- Connect Mission Planner to the broadcasted MavProxy
     - Choose `UDP`
     - Click on Connect, then fill in this in the port `14552`
     
     ![ardupilot_port](docs/ardupilot_port.png)
 
-- Sidenote: here is my usual IP setup
+- Sidenote: here is my usual Ports setup
+
 ```
 - MavProxy connect to TCP 127.0.0.1:5887
 - MantisGCS connect to UDP 127.0.0.1:14550
@@ -53,7 +56,7 @@ mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0
 - ardupilot_mavlink_fastpi connect to UDP 127.0.0.1:14600++
 ```
 
-### 1. Run Project
+### 2. Run Project
 
 ```bash
 # Clone repository
@@ -76,7 +79,7 @@ pip install pymavlink numpy
 python run_mission.py
 ```
 
-### 2. Edit Confugration
+### 3. Edit Confugration
 Edit `config/mission_params.py` to set your mission parameters:
 ```
 class MissionParams:
@@ -100,7 +103,7 @@ class MissionParams:
         self.connection_string = 'udp:localhost:14603'  # MAVProxy connection
 ```
 
-### 3. Check Output
+### 4. Check Output
 ```bash
 Waiting for heartbeat...
 Heartbeat received!
