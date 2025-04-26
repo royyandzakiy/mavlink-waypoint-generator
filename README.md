@@ -17,19 +17,54 @@ A Python-based system for generating and uploading complex agricultural spraying
 - Windows 10/11
 - Python 3.8 or newer
 - Git (optional)
+- Ardupilot or any other Ground Control System Software -- acting as simulated droneto help see the waypoints being created
 
-### 1. Setup Virtual Environment
+### 0. Setup Software in The Loop (SITL)
+- Open Mission Planner > Simulation Tab
+- Choose Quadplan & Plane. Click ok to download SITL
+- Find folder of SITL, mine is at `%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl\ArduPlane.exe`
+- Disconnect
 
-```powershell
+```bash
+# Assign temporary variable
+set MY_ARDUPILOT_SITL=%USERPROFILE%\Documents\Mission Planner\sitl\
+
+# or, choose this if you have OneDrive installed, your Documents folder probably have moved here
+set MY_ARDUPILOT_SITL=%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl\ 
+
+# Activate SITL
+"%MY_ARDUPILOT_SITL%\ArduPlane.exe" -Mquadplane -O-35.3633522,149.1652409,587.067920000005,0 -s1 --serial0 tcp:127.0.0.1 --defaults "%MY_ARDUPILOT_SITL%\default_params\quadplane.parm"
+
+# Activate mavproxy to broadcast to different IPs
+mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0.1:14552 --out udp:localhost:14601 --out udpin:localhost:14602 --out udpout:localhost:14603 --out udpbcast:192.168.2.255:14700
+```
+- Connect Ardupilot to the broadcasted MavProxy
+    - Choose `UDP`
+    - Click on Connect, then fill in this in the port `14552`
+    
+    ![ardupilot_port](docs/ardupilot_port.png)
+
+- Sidenote: here is my usual IP setup
+```
+- MavProxy connect to TCP 127.0.0.1:5887
+- MantisGCS connect to UDP 127.0.0.1:14550
+- Mission Planner to UDP 127.0.0.1:14552
+- QGroundControl connect to UDP 127.0.0.1:14553
+- ardupilot_mavlink_fastpi connect to UDP 127.0.0.1:14600++
+```
+
+### 1. Run Project
+
+```bash
 # Clone repository
 git clone https://github.com/royyandzakiy/ardupilot_mavlink_fastapi.git
 cd ardupilot_mavlink_fastapi
 
-# Create virtual environment
-python -m venv venv
+# Create virtual environment (do this just once)
+python -m venv .venv
 
 # Activate environment
-.\venv\Scripts\activate
+.\.venv\Scripts\activate # .\.venv\Scripts\Activate.ps1 if using powershell
 
 # Upgrade pip
 python -m pip install --upgrade pip
