@@ -52,20 +52,6 @@ mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0
     
     ![ardupilot_port](docs/ardupilot_port.png)
 
-- Sidenote: here is to understand the above Ports setup
-    - ArduPlane.exe SITL runs on `TCP 127.0.0.1:5887`
-    - MAVProxy directly connects to SITL at `TCP 127.0.0.1:5887`, MAVProxy then broadcasts to all the other Ports
-    - MantisGCS connects to `UDP 127.0.0.1:14550`
-    - Mission Planner connects to `UDP 127.0.0.1:14552` (optional)
-    - QGroundControl connects to `UDP 127.0.0.1:14553` (optional)
-    - mavlink-waypoint-generator connect to `UDP 127.0.0.1:14600++`
-
-- To Modify the Ports setup:
-    - `--serial0 tcp:127.0.0.1`: Port set for the SITL to run
-    - `--master tcp:127.0.0.1:5887`: Port set as the master port, MAVProxy expects an SITL or HITL is running on this Port, for it to then Broadcast to other ports
-    - `--out`: All Ports that MAVProxy Broadcasts towards, it is hence accessible by other applications, but only 1 application for 1 port
-        - to understand `udpin` `udpout` `udpbcast` read more about [Pymavlink library](https://mavlink.io/en/mavgen_python/)
-
 ### 2. Run Project
 
 ```bash
@@ -135,7 +121,28 @@ Mission uploaded successfully!
 ##### square spiralout
 ![square_spiralout](docs/square_spiralout.png)
 
-### Known Error
+### MISC
+#### Configuring MAVProxy Ports
+- Here is to understand the above Ports setup
+    - ArduPlane.exe SITL runs on `TCP 127.0.0.1:5887`
+    - MAVProxy directly connects to SITL at `TCP 127.0.0.1:5887`, MAVProxy then broadcasts to all the other Ports
+    - MantisGCS connects to `UDP 127.0.0.1:14550`
+    - Mission Planner connects to `UDP 127.0.0.1:14552` (optional)
+    - QGroundControl connects to `UDP 127.0.0.1:14553` (optional)
+    - mavlink-waypoint-generator connect to `UDP 127.0.0.1:14600++`
+
+- To Modify the Ports setup:
+    - `--serial0 tcp:127.0.0.1`: Port set for the SITL to run
+    - `--master tcp:127.0.0.1:5887`: Port set as the master port, MAVProxy expects an SITL or HITL is running on this Port, for it to then Broadcast to other ports
+    - `--out`: All Ports that MAVProxy Broadcasts towards, it is hence accessible by other applications, but only 1 application for 1 port
+        - to understand `udpin` `udpout` `udpbcast` read more about [Pymavlink library](https://mavlink.io/en/mavgen_python/)
+
+#### Run SITL
+You can run the SITL with custuom commands through this script, modify it as needed
+
+`python sandbox\mavlink_commander.py`
+
+#### Known Errors
 - stalling at `heartbeat...`, meaning your SITL and MAVProxy is not running properly, the `run_generate_waypoint.py` script cannot access the Port `UDP 127.0.0.1:14600`
 ```bash
 (.venv) C:\Users\path\to\mavlink-waypoint-generator>python run_generate_waypoint.py
