@@ -1,6 +1,6 @@
-# Agricultural Drone Mission Planner
+# MAVLink Waypoint Generator & Runner
 
-A Python-based system for generating and uploading complex agricultural spraying patterns to drones using MAVLink.
+A Python-based system for generating and uploading complex Waypoints through MAVLink. It also can send commands to run.
 
 ## Features
 
@@ -46,7 +46,7 @@ set MY_ARDUPILOT_SITL_FOLDER=%USERPROFILE%\OneDrive\Documents\Mission Planner\si
 mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0.1:14552 --out udp:localhost:14601 --out udpin:localhost:14602 --out udpout:localhost:14603 --out udpbcast:192.168.2.255:14700
 ```
 
-- Connect Mission Planner to the broadcasted MavProxy
+- Connect Mission Planner to the broadcasted MAVProxy
     - Choose `UDP`
     - Click on Connect, then fill in this in the port `14552`
     
@@ -54,11 +54,17 @@ mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0
 
 - Sidenote: here is to understand the above Ports setup
     - ArduPlane.exe SITL runs on `TCP 127.0.0.1:5887`
-    - MavProxy directly connects to SITL at `TCP 127.0.0.1:5887`, MavProxy then broadcasts to all the other Ports
+    - MAVProxy directly connects to SITL at `TCP 127.0.0.1:5887`, MAVProxy then broadcasts to all the other Ports
     - MantisGCS connects to `UDP 127.0.0.1:14550`
     - Mission Planner connects to `UDP 127.0.0.1:14552` (optional)
     - QGroundControl connects to `UDP 127.0.0.1:14553` (optional)
     - mavlink-waypoint-generator connect to `UDP 127.0.0.1:14600++`
+
+- To Modify the Ports setup:
+    - `--serial0 tcp:127.0.0.1`: Port set for the SITL to run
+    - `--master tcp:127.0.0.1:5887`: Port set as the master port, MAVProxy expects an SITL or HITL is running on this Port, for it to then Broadcast to other ports
+    - `--out`: All Ports that MAVProxy Broadcasts towards, it is hence accessible by other applications, but only 1 application for 1 port
+        - to understand `udpin` `udpout` `udpbcast` read more about [Pymavlink library](https://mavlink.io/en/mavgen_python/)
 
 ### 2. Run Project
 
@@ -80,7 +86,7 @@ python -m pip install --upgrade pip
 pip install pymavlink numpy
 
 # Run the mission planner:
-python run_mission.py
+python run_generate_waypoint.py
 ```
 
 ### 3. Edit Confugration
@@ -128,3 +134,10 @@ Mission uploaded successfully!
 
 ##### square spiralout
 ![square_spiralout](docs/square_spiralout.png)
+
+### Known Error
+- stalling at `heartbeat...`, meaning your SITL and MAVProxy is not running properly, the `run_generate_waypoint.py` script cannot access the Port `UDP 127.0.0.1:14600`
+```bash
+(.venv) C:\Users\path\to\mavlink-waypoint-generator>python run_generate_waypoint.py
+Waiting for heartbeat...
+```
