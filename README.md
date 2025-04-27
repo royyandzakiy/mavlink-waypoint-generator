@@ -31,7 +31,7 @@ A Python-based system for generating and uploading complex Waypoints through MAV
 
 - Disconnect
 
-- Activate Command Prompt
+- Run on Command Prompt #1
 ```bash
 # Assign temporary variable
 set MY_ARDUPILOT_SITL_FOLDER=%USERPROFILE%\Documents\Mission Planner\sitl
@@ -41,7 +41,10 @@ set MY_ARDUPILOT_SITL_FOLDER=%USERPROFILE%\OneDrive\Documents\Mission Planner\si
 
 # Activate SITL
 "%MY_ARDUPILOT_SITL_FOLDER%\ArduPlane.exe" -Mquadplane -O-35.3633522,149.1652409,587.067920000005,0 -s1 --serial0 tcp:127.0.0.1 --defaults "%MY_ARDUPILOT_SITL_FOLDER%\default_params\quadplane.parm"
+```
 
+- Run on Command Prompt #2 (open a different Command Prompt from #1)
+```bash
 # Activate mavproxy to broadcast to different IPs
 mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0.1:14552 --out udp:localhost:14601 --out udpin:localhost:14602 --out udpout:localhost:14603 --out udpbcast:192.168.2.255:14700
 ```
