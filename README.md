@@ -20,21 +20,27 @@ A Python-based system for generating and uploading complex agricultural spraying
 - Mission Planner (needed to download the SITL)
 
 ### 1. Setup Software in The Loop (SITL)
-- Open Mission Planner > Simulation Tab
-- Choose Quadplan & Plane. Click ok to download SITL
+- Open Mission Planner > `Simulation Tab`
+- Choose `Quadplane` & `Plane`. Click ok to download SITL
+
+![sitl_download](docs/sitl_download.png)
+
 - Find folder of SITL, mine is at `%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl\ArduPlane.exe`
+
+![arduplane_exe](docs/arduplane_exe.png)
+
 - Disconnect
 
 - Activate Command Prompt
 ```bash
 # Assign temporary variable
-set MY_ARDUPILOT_SITL=%USERPROFILE%\Documents\Mission Planner\sitl
+set MY_ARDUPILOT_SITL_FOLDER=%USERPROFILE%\Documents\Mission Planner\sitl
 
 # or, choose this if you have OneDrive installed, your Documents folder probably have moved here
-set MY_ARDUPILOT_SITL=%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl
+set MY_ARDUPILOT_SITL_FOLDER=%USERPROFILE%\OneDrive\Documents\Mission Planner\sitl
 
 # Activate SITL
-"%MY_ARDUPILOT_SITL%\ArduPlane.exe" -Mquadplane -O-35.3633522,149.1652409,587.067920000005,0 -s1 --serial0 tcp:127.0.0.1 --defaults "%MY_ARDUPILOT_SITL%\default_params\quadplane.parm"
+"%MY_ARDUPILOT_SITL_FOLDER%\ArduPlane.exe" -Mquadplane -O-35.3633522,149.1652409,587.067920000005,0 -s1 --serial0 tcp:127.0.0.1 --defaults "%MY_ARDUPILOT_SITL_FOLDER%\default_params\quadplane.parm"
 
 # Activate mavproxy to broadcast to different IPs
 mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0.1:14552 --out udp:localhost:14601 --out udpin:localhost:14602 --out udpout:localhost:14603 --out udpbcast:192.168.2.255:14700
@@ -46,22 +52,20 @@ mavproxy --master tcp:127.0.0.1:5887 --out udp:127.0.0.1:14550 --out udp:127.0.0
     
     ![ardupilot_port](docs/ardupilot_port.png)
 
-- Sidenote: here is my usual Ports setup
-
-```
-- MavProxy connect to TCP 127.0.0.1:5887
-- MantisGCS connect to UDP 127.0.0.1:14550
-- Mission Planner to UDP 127.0.0.1:14552
-- QGroundControl connect to UDP 127.0.0.1:14553
-- ardupilot_mavlink_fastpi connect to UDP 127.0.0.1:14600++
-```
+- Sidenote: here is to understand the above Ports setup
+    - ArduPlane.exe SITL runs on `TCP 127.0.0.1:5887`
+    - MavProxy directly connects to SITL at `TCP 127.0.0.1:5887`, MavProxy then broadcasts to all the other Ports
+    - MantisGCS connects to `UDP 127.0.0.1:14550`
+    - Mission Planner connects to `UDP 127.0.0.1:14552` (optional)
+    - QGroundControl connects to `UDP 127.0.0.1:14553` (optional)
+    - mavlink-waypoint-generator connect to `UDP 127.0.0.1:14600++`
 
 ### 2. Run Project
 
 ```bash
 # Clone repository
-git clone https://github.com/royyandzakiy/ardupilot_mavlink_fastapi.git
-cd ardupilot_mavlink_fastapi
+git clone https://github.com/royyandzakiy/mavlink-waypoint-generator.git
+cd mavlink-waypoint-generator
 
 # Create virtual environment (do this just once)
 python -m venv .venv
