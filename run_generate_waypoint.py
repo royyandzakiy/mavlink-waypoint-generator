@@ -1,8 +1,44 @@
 import math
+import folium
+import webbrowser
 from pymavlink import mavutil
 from config import MissionParams
 from mavlink import MissionHandler
 from patterns import *
+
+def create_mission_map(start_lat, start_lon, waypoints, spray_points):
+    """Create interactive Folium map with mission visualization"""
+    spray_indices = {seq for seq, _ in spray_points}
+    
+    m = folium.Map(location=[start_lat, start_lon], zoom_start=17)
+    
+    # Add start position
+    folium.Marker(
+        [start_lat, start_lon],
+        icon=folium.Icon(color='green', icon='flag'),
+        tooltip='Start Position'
+    ).add_to(m)
+    
+    # Add waypoints with different colors for spray points
+    for idx, (lat, lon, alt) in enumerate(waypoints):
+        color = 'red' if idx in spray_indices else 'blue'
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=3,
+            color=color,
+            fill=True,
+            fill_color=color,
+            tooltip=f"WP-{idx} ({alt}m)"
+        ).add_to(m)
+    
+    # Connect waypoints with lines
+    points = [[wp[0], wp[1]] for wp in waypoints]
+    folium.PolyLine(points, color='#1f77b4', weight=2.5).add_to(m)
+    
+    # Save map
+    map_path = 'mission_preview.html'
+    m.save(map_path)
+    return map_path
 
 def main():
     params = MissionParams()
@@ -52,6 +88,14 @@ def main():
         params.enable_spray
     )
     
+    # Generate and display mission map
+    map_path = create_mission_map(start_lat, start_lon, waypoints_with_sprays, spray_points)
+    print(f"\nGenerated mission preview: {map_path}")
+    webbrowser.open(map_path)
+    
+    # Wait for user confirmation
+    input("\nReview the mission map in your browser.\nPress Enter to upload mission or Ctrl+C to cancel...")
+    
     # Prepare mission items
     mission_items = []
     current_seq = 0
@@ -74,7 +118,6 @@ def main():
         })
         current_seq += 1
         
-        # Only add spray commands if enabled
         if params.enable_spray:
             for spray_seq, spray_pos in spray_points:
                 if spray_seq == i:
@@ -97,7 +140,8 @@ def main():
     
     # Upload mission
     handler.upload_mission(mission_items)
-    print(f"Mission completed: {params.shape_type} pattern with {'spray' if params.enable_spray else 'no spray'}")
+    print(f"\nMission uploaded: {params.shape_type} pattern with {len(waypoints_with_sprays)} waypoints")
+    print(f"Spray system {'ACTIVE' if params.enable_spray else 'DISABLED'}")
 
 if __name__ == "__main__":
     main()

@@ -72,7 +72,7 @@ python -m venv .venv
 python -m pip install --upgrade pip
 
 # Install required packages
-pip install pymavlink numpy
+pip install pymavlink numpy folium
 
 # Run the mission planner:
 python run_generate_waypoint.py
