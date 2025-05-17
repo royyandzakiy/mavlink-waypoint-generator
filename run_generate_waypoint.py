@@ -226,6 +226,10 @@ def handle_upload_mission():
         if not current_mission:
             raise ValueError("No mission generated")
         
+        # Get fresh params to ensure latest values
+        params = MissionParams()
+        
+        # Convert to pymavlink format
         mission_items = []
         current_seq = 0
         
@@ -235,8 +239,12 @@ def handle_upload_mission():
                     'seq': current_seq,
                     'frame': mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
                     'command': mavutil.mavlink.MAV_CMD_DO_SET_SERVO,
-                    'param1': MissionParams().servo_channel,
-                    'param2': MissionParams().servo_pwm,
+                    'current': 0,
+                    'autocontinue': 1,
+                    'param1': params.servo_channel,
+                    'param2': params.servo_pwm,
+                    'param3': 0,
+                    'param4': 0,
                     'x': wp['lat'],
                     'y': wp['lon'],
                     'z': wp['alt']
@@ -246,13 +254,64 @@ def handle_upload_mission():
                     'seq': current_seq,
                     'frame': mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
                     'command': mavutil.mavlink.MAV_CMD_NAV_WAYPOINT,
+                    'current': 0,
+                    'autocontinue': 1,
+                    'param1': 0,  # Hold time
+                    'param2': 0,  # Acceptance radius
+                    'param3': 0,  # Pass through
+                    'param4': 0,  # Yaw angle
                     'x': wp['lat'],
                     'y': wp['lon'],
                     'z': wp['alt']
                 })
             current_seq += 1
+
+        # Use the original upload logic from MissionHandler
+        mission_handler.master.waypoint_clear_all_send()
+        mission_handler.master.waypoint_count_send(len(mission_items))
         
-        mission_handler.upload_mission(mission_items)
+        last_seq = -1
+        while True:
+            msg = mission_handler.master.recv_match(
+                type=['MISSION_REQUEST', 'WAYPOINT_REQUEST'],
+                blocking=True,
+                timeout=3
+            )
+            if msg is None:
+                break
+                
+            seq = msg.seq
+            if seq >= len(mission_items):
+                break
+                
+            item = mission_items[seq]
+            print(f"Sending {'spray' if item.get('is_spray', False) else 'navigation'} waypoint {seq}...")
+            
+            mission_handler.master.mav.mission_item_send(
+                mission_handler.target_system,
+                mission_handler.target_component,
+                seq,
+                item['frame'],
+                item['command'],
+                item['current'],
+                item['autocontinue'],
+                item['param1'],
+                item['param2'],
+                item['param3'],
+                item['param4'],
+                item['x'],
+                item['y'],
+                item['z']
+            )
+            last_seq = seq
+
+        mission_handler.master.waypoint_set_current_send(0)
+        mission_handler.master.mav.mission_ack_send(
+            mission_handler.target_system,
+            mission_handler.target_component,
+            mavutil.mavlink.MAV_MISSION_ACCEPTED
+        )
+        
         socketio.emit('status', {'message': 'Mission uploaded successfully'})
     except Exception as e:
         socketio.emit('error', {'message': f'Upload failed: {str(e)}'})
