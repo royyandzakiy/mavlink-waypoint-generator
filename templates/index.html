@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive Mission Planner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet-path-transform/1.4.0/leaflet-path-transform.css"/>
+    <style>
+        #map { height: 70vh; }
+        .controls { padding: 20px; background: #f0f0f0; }
+        .param-group { margin: 10px 0; }
+        .radius-handle {
+            width: 12px!important;
+            height: 12px!important;
+            background: #ff0000;
+            border-radius: 6px;
+            border: 2px solid white;
+            cursor: ew-resize;
+        }
+        .leaflet-draw-toolbar a {
+            background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/images/spritesheet.png')!important;
+            background-size: 270px 30px!important;
+        }
+        .leaflet-draw-toolbar a.leaflet-draw-draw-circle {
+            background-position: -2px -2px!important;
+        }
+        .leaflet-draw-toolbar a.leaflet-draw-draw-rectangle {
+            background-position: -31px -2px!important;
+        }
+        .leaflet-draw-toolbar a.leaflet-draw-draw-polygon {
+            background-position: -62px -2px!important;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h2>Mission Parameters</h2>
+        <div class="param-group">
+            <label>Shape: 
+            <select id="shapeType">
+                <option value="circle">Circle</option>
+                <option value="square">Square</option>
+                <option value="triangle">Triangle</option>
+            </select></label>
+            
+            <label>Pattern: 
+            <select id="patternType">
+                <option value="zigzag">Zigzag</option>
+                <option value="spiral_out">Spiral Out</option>
+                <option value="spiral_in">Spiral In</option>
+            </select></label>
+            
+            <label>Radius (m): <input type="number" id="radius" value="50"></label>
+            <label>Stripe Separation (m): <input type="number" id="stripeSep" value="5"></label>
+            <label>Rotation (°): <input type="number" id="rotation" value="0"></label>
+            <label>Altitude (m): <input type="number" id="altitude" value="10"></label>
+            <label><input type="checkbox" id="enableSpray"> Enable Spray</label>
+        </div>
+        <button onclick="generateMission()">Generate Mission</button>
+        <button onclick="uploadMission()">Upload Mission</button>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-path-transform/1.4.0/leaflet-path-transform.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let map, missionLayer, drawControl, activeShape;
+
+        socket.on('init_map', function(data) {
+            map = L.map('map').setView([data.start_lat, data.start_lon], 17);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            
+            missionLayer = L.layerGroup().addTo(map);
+            
+            // Home position marker
+            L.marker([data.start_lat, data.start_lon], {
+                icon: L.icon({iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png'})
+            }).bindPopup('Home Position').addTo(map);
+
+            // Initialize drawing controls
+            initDrawControls();
+        });
+
+        function initDrawControls() {
+            const drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            // Initialize the draw control
+            drawControl = new L.Control.Draw({
+                position: 'topright',
+                draw: {
+                    circle: {
+                        shapeOptions: {
+                            transform: true
+                        }
+                    },
+                    rectangle: {
+                        shapeOptions: {
+                            transform: true
+                        }
+                    },
+                    polygon: {
+                        shapeOptions: {
+                            transform: true
+                        },
+                        allowIntersection: false
+                    },
+                    marker: false,
+                    polyline: false
+                },
+                edit: {
+                    featureGroup: drawnItems,
+                    remove: false
+                }
+            });
+
+            // Add the draw control to the map
+            map.addControl(drawControl);
+
+            // Handle drawing events
+            map.on('draw:created', function(e) {
+                activeShape = e.layer;
+                drawnItems.addLayer(activeShape);
+                setupShapeEditing(activeShape);
+                updateParamsFromShape(activeShape);
+            });
+        }
+
+        function setupShapeEditing(layer) {
+            // Enable transformation
+            layer.transform = new L.Path.Transform(layer);
+            layer.transform.enable({
+                rotation: true,
+                scaling: true
+            });
+
+            layer.on('transform', function() {
+                updateParamsFromShape(layer);
+            });
+
+            if (layer instanceof L.Circle) {
+                // Add radius handle for circles
+                layer.on('drag', function() {
+                    updateParamsFromShape(layer);
+                });
+                
+                const center = layer.getLatLng();
+                const edgePoint = map.project(center)
+                    .add([layer.getRadius(), 0]);
+                const edgeLatLng = map.unproject(edgePoint);
+                
+                layer.handle = L.marker(edgeLatLng, {
+                    icon: L.divIcon({className: 'radius-handle'}),
+                    draggable: true
+                }).on('drag', function(e) {
+                    const newRadius = map.distance(center, e.latlng);
+                    layer.setRadius(newRadius);
+                    updateParamsFromShape(layer);
+                }).addTo(map);
+            }
+        }
+
+        function updateParamsFromShape(layer) {
+            const type = layer instanceof L.Circle ? 'circle' : 
+                        layer instanceof L.Rectangle ? 'square' : 
+                        'triangle';
+            
+            document.getElementById('shapeType').value = type;
+
+            const center = layer.getCenter?.() || layer.getBounds().getCenter();
+            const params = {
+                shapeType: type,
+                radius: 50,
+                rotation: 0
+            };
+
+            switch(type) {
+                case 'circle':
+                    params.radius = layer.getRadius();
+                    break;
+                case 'square':
+                    const bounds = layer.getBounds();
+                    params.radius = Math.max(
+                        bounds.getEast() - bounds.getWest(),
+                        bounds.getNorth() - bounds.getSouth()
+                    ) / 2;
+                    params.rotation = layer.transform._rotation || 0;
+                    break;
+                case 'triangle':
+                    const coords = layer.getLatLngs()[0];
+                    const distances = coords.map(c => map.distance(center, c));
+                    params.radius = Math.max(...distances);
+                    params.rotation = layer.transform._rotation || 0;
+                    break;
+            }
+
+            document.getElementById('radius').value = params.radius.toFixed(1);
+            document.getElementById('rotation').value = params.rotation.toFixed(1);
+            generateMission();
+        }
+
+        // Input field handlers
+        document.getElementById('radius').addEventListener('input', function() {
+            if (activeShape?.setRadius) {
+                activeShape.setRadius(parseFloat(this.value));
+                updateParamsFromShape(activeShape);
+            }
+        });
+
+        document.getElementById('rotation').addEventListener('input', function() {
+            if (activeShape?.transform) {
+                activeShape.transform.rotate(parseFloat(this.value));
+                updateParamsFromShape(activeShape);
+            }
+        });
+
+        // Mission generation
+        function generateMission() {
+            const params = {
+                shapeType: document.getElementById('shapeType').value,
+                patternType: document.getElementById('patternType').value,
+                radius: parseFloat(document.getElementById('radius').value),
+                stripeSep: parseFloat(document.getElementById('stripeSep').value),
+                rotation: parseFloat(document.getElementById('rotation').value),
+                altitude: parseFloat(document.getElementById('altitude').value),
+                enableSpray: document.getElementById('enableSpray').checked
+            };
+
+            if (activeShape) {
+                const center = activeShape.getCenter?.() || activeShape.getBounds().getCenter();
+                socket.emit('set_center', { 
+                    lat: center.lat,
+                    lng: center.lng 
+                });
+            }
+
+            socket.emit('generate_mission', params);
+        }
+
+        function uploadMission() {
+            socket.emit('upload_mission');
+        }
+
+        // Mission display handler
+        socket.on('mission_update', function(data) {
+            missionLayer.clearLayers();
+            data.waypoints.forEach((wp, idx) => {
+                L.circleMarker([wp.lat, wp.lon], {
+                    color: wp.is_spray ? 'red' : 'blue',
+                    radius: 5
+                }).bindTooltip(`WP-${idx} (${wp.alt}m)`).addTo(missionLayer);
+            });
+
+            if(data.waypoints.length > 1) {
+                L.polyline(data.waypoints.map(wp => [wp.lat, wp.lon]), {
+                    color: '#1f77b4', 
+                    weight: 2
+                }).addTo(missionLayer);
+            }
+        });
+
+        socket.on('status', function(data) {
+            alert(data.message);
+        });
+    </script>
+</body>
+</html>
