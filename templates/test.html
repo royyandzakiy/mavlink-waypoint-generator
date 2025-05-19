@@ -12,6 +12,10 @@
         .delete-btn {
         @apply ml-2 px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs;
         }
+        /* Add button styling for clarity */
+        button {
+            color: white; /* Ensure text color is visible on Tailwind colors */
+        }
     </style>
 </head>
 <body>
@@ -20,18 +24,18 @@
             <div>
                 <h1 class="text-xl font-bold mb-4">Shape Creator</h1>
                 <div class="space-y-2">
-                    <button id="boxBtn" onclick="setMode('box')" class="w-full bg-gray-300 text-white p-2 rounded transition-all">
+                    <button id="boxBtn" class="w-full bg-gray-300 p-2 rounded transition-all">
                         Create Box
                     </button>
-                    <button id="circleBtn" onclick="setMode('circle')" class="w-full bg-gray-300 text-white p-2 rounded transition-all">
+                    <button id="circleBtn" class="w-full bg-gray-300 p-2 rounded transition-all">
                         Create Circle
                     </button>
-                    <button id="polygonBtn" onclick="setMode('polygon')" class="w-full bg-gray-300 text-white p-2 rounded transition-all">
+                    <button id="polygonBtn" class="w-full bg-gray-300 p-2 rounded transition-all">
                         Create Polygon
                     </button>
                 </div>
             </div>
-            
+
             <div class="mt-4 flex-1 overflow-auto">
                 <h2 class="font-bold mb-2">Created Shapes</h2>
                 <div id="shapeList" class="space-y-2"></div>
