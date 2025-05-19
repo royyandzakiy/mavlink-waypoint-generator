@@ -7,12 +7,14 @@ let tempShape = null;
 let tempPolyLine = null;
 let polygonPoints = [];
 const shapes = [];
+let lastClickTime = 0;
 
 function initMap() {
     map = L.map('map').setView([51.505, -0.09], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     
     map.on('click', handleMapClick);
+    map.on('dblclick', handleMapDoubleClick);
     map.on('mousemove', handleMapMove);
     map.on('contextmenu', handleRightClick);
 }
@@ -40,11 +42,32 @@ function cancelAllOperations() {
     updateShapeList();
 }
 
+function handleMapDoubleClick(e) {
+    if (currentMode === 'polygon' && creationInProgress) {
+        e.originalEvent.preventDefault();
+        if (polygonPoints.length >= 3) {
+            finalizePolygon();
+        } else {
+            cancelAllOperations();
+        }
+    }
+}
+
 function handleMapClick(e) {
     if (!currentMode) return;
 
     if (currentMode === 'polygon') {
-        handlePolygonClick(e);
+        const now = Date.now();
+        if (now - lastClickTime < 300) return; // Ignore double-click component
+        lastClickTime = now;
+
+        if (!creationInProgress) {
+            polygonPoints = [e.latlng];
+            creationInProgress = true;
+            addPolygonPoint(e.latlng);
+        } else {
+            addPolygonPoint(e.latlng);
+        }
         return;
     }
 
