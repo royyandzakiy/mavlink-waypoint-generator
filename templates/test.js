@@ -152,7 +152,7 @@ function finalizePolygon() {
             layer: L.polygon(polygonPoints, { color: '#3388ff', weight: 2 })
         };
         
-        shapes.push(finalizedShape);
+        shapes.push(finalizedShape); // add to list of shapes
         addShapeToMap(finalizedShape);
         updateShapeList();
     }
@@ -187,13 +187,31 @@ function updateShapeList() {
     
     shapes.forEach((shape, index) => {
         const div = document.createElement('div');
-        div.className = 'p-2 bg-white rounded shadow text-sm';
+        div.className = 'p-2 bg-white rounded shadow text-sm flex justify-between items-center';
         div.innerHTML = `
-            <strong>${shape.type.charAt(0).toUpperCase() + shape.type.slice(1)} ${index + 1}</strong><br>
-            ${getShapeInfoText(shape)}
+            <div>
+                <strong>${shape.type.charAt(0).toUpperCase() + shape.type.slice(1)} ${index + 1}</strong><br>
+                ${getShapeInfoText(shape)}
+            </div>
+            <button class="delete-btn" data-index="${index}">×</button>
         `;
+        div.querySelector('.delete-btn').addEventListener('click', (e) => {
+            deleteShape(index);
+            e.stopPropagation();
+        });
         listContainer.appendChild(div);
     });
+}
+
+function deleteShape(index) {
+    if (index >= 0 && index < shapes.length) {
+        // Remove from map
+        shapes[index].layer.remove();
+        // Remove from array
+        shapes.splice(index, 1);
+        // Update UI
+        updateShapeList();
+    }
 }
 
 function getShapeInfoText(shape) {
